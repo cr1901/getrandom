@@ -6,7 +6,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 #![allow(dead_code)]
-use core::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+cfg_if! {
+    if #[cfg(all(target_arch = "msp430", target_os = "none"))] {
+        use msp430_atomic::AtomicUsize;
+    } else {
+        use core::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+    }
+}
 
 // This structure represents a lazily initialized static usize value. Useful
 // when it is preferable to just rerun initialization instead of locking.
@@ -41,10 +47,22 @@ impl LazyUsize {
     // init() should always return the same value, if it succeeds.
     pub fn unsync_init(&self, init: impl FnOnce() -> usize) -> usize {
         // Relaxed ordering is fine, as we only have a single atomic variable.
-        let mut val = self.0.load(Relaxed);
-        if val == Self::UNINIT {
-            val = init();
-            self.0.store(val, Relaxed);
+        cfg_if! {
+            // On msp430, we only have sequentially-consistent atomics (not to mention an
+            // incompatible API!).
+            if #[cfg(all(target_arch = "msp430", target_os = "none"))] {
+                let mut val = self.0.load();
+                if val == Self::UNINIT {
+                    val = init();
+                    self.0.store(val);
+                }
+            } else {
+                let mut val = self.0.load(Relaxed);
+                if val == Self::UNINIT {
+                    val = init();
+                    self.0.store(val, Relaxed);
+                }
+            }
         }
         val
     }

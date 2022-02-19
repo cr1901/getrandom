@@ -29,6 +29,9 @@ js-sys = { version = "0.3", optional = true }
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dev-dependencies]
 wasm-bindgen-test = "0.3.18"
 
+[target.'cfg(all(target_arch = "msp430", target_os = "none"))'.dependencies]
+msp430-atomic = "0.1.4"
+
 [features]
 # Implement std-only traits for getrandom::Error
 std = []
